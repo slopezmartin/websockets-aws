@@ -1,10 +1,7 @@
 package org.softwaresapiens.websockets.domain;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.UUID;
 
@@ -12,7 +9,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
+@EqualsAndHashCode
 public class Report {
     private UUID id;
     private String type;
+    private String path;
+    private ReportStatus status;
 }

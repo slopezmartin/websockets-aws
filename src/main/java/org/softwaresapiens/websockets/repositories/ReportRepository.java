@@ -11,8 +11,13 @@ import java.util.UUID;
 public class ReportRepository {
 
     public Report save(Report report) {
-        report.setId(UUID.randomUUID());
         log.info("Saving report with ID: {}", report.getId());
+        return report;
+    }
+
+    public Report findById(UUID reportId) {
+        Report report = new Report();
+        report.setId(reportId);
         return report;
     }
 }
