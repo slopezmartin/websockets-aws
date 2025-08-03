@@ -10,5 +10,6 @@ import lombok.*;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CreateReportRequest {
+    private String action;
     private String type;
 }
