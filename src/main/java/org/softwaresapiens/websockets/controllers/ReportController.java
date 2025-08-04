@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.springframework.http.HttpStatus.CREATED;
+
 @RestController
 @RequestMapping("/reports")
 @RequiredArgsConstructor
@@ -28,7 +30,9 @@ public class ReportController {
         log.info("Creating report request: {}", createReportRequest.toString());
         Report createdReport = reportService.create(createReportRequest.getType());
         reportDb.put(createdReport.getId().toString(), createReportRequest.getConnectionId());
-        return new ResponseEntity(new CreateReportResponse(createdReport.getId(), createdReport.getType()), HttpStatus.CREATED);
+        CreateReportResponse response = new CreateReportResponse(createdReport.getId(), createdReport.getType());
+        log.info("Report created with ID: {}, Type: {}", createdReport.getId(), createdReport.getType());
+        return new ResponseEntity(response, HttpStatus.CREATED);
     }
 
     @PutMapping("/update/{uuid}")
