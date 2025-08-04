@@ -2,7 +2,7 @@
 
 Conectarse a la instancia de Ubuntu en AWS
 
-ssh -i "slopezmartin-demo-ssh.pem" ubuntu@ec2-54-194-60-242.eu-west-1.compute.amazonaws.com
+ssh -i "slopezmartin-demo-ssh.pem" ubuntu@ec2-3-252-193-15.eu-west-1.compute.amazonaws.com
 
 
 Subir código mediante SCP

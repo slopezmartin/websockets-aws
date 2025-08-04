@@ -9,7 +9,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
+@ToString
 public class CreateReportRequest {
-    private String action;
+    private String connectionId;
     private String type;
 }
