@@ -1,0 +1,144 @@
+### Guía de Configuración: API Gateway WebSocket con Integración HTTP
+
+Esta guía detalla la creación de un API Gateway de WebSocket que, al conectarse un cliente, invoca de forma asíncrona un endpoint HTTP en un servidor externo (por ejemplo, una instancia de EC2 o un servicio de Spring Boot).
+
+#### 1\. Crear el API Gateway WebSocket
+
+**Nombres de ejemplo:**
+
+  * **API Name:** `ExcelGeneratorAPI`
+  * **Stage Name:** `prod`
+  * **Endpoint de ejemplo (público):** `wss://<api-id>.execute-api.<region>.amazonaws.com/prod`
+
+**Pasos:**
+
+1.  En la consola de AWS, navega a **API Gateway**.
+2.  Haz clic en **Create API** y selecciona **WebSocket API**.
+3.  Dale un nombre a la API (ej. `ExcelGeneratorAPI`) y un nombre para la ruta de selección de mensajes (ej. `$default`).
+
+#### 2\. Configurar el Rol de IAM para la Integración
+
+**Particularidad crítica:** API Gateway necesita permisos para invocar tu endpoint HTTP. Esto se hace a través de un rol de IAM.
+
+**Nombres de ejemplo:**
+
+  * **IAM Role Name:** `APIGatewayInvokeHTTPRole`
+  * **IAM Policy Name:** `APIGatewayInvokeHTTPPolicy`
+
+**Pasos:**
+
+1.  Ve a la consola de **IAM**.
+
+2.  Crea una nueva **política** con el siguiente JSON:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "execute-api:Invoke"
+          ],
+          "Resource": [
+            "arn:aws:execute-api:*:*:*"
+          ]
+        }
+      ]
+    }
+    ```
+
+    Aunque `execute-api:Invoke` se utiliza comúnmente para invocar API Gateway, en este caso, la integración HTTP **no requiere una política específica en este rol para invocar el endpoint externo**. La clave es el "Trust relationship" del rol.
+
+3.  Crea un nuevo **rol** y selecciona **API Gateway** como servicio de confianza (trusted entity).
+
+4.  Adjunta la política que acabas de crear a este rol.
+
+5.  **Revisa la "Trust Relationship" del rol.** Debe permitir que API Gateway asuma este rol. El JSON de la relación de confianza debe ser similar a:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "apigateway.amazonaws.com"
+          },
+          "Action": "sts:AssumeRole"
+        }
+      ]
+    }
+    ```
+
+#### 3\. Configurar la ruta `$connect` y su integración
+
+Esta es la parte más importante. Aquí le decimos a API Gateway qué hacer cuando un cliente se conecta.
+
+**Nombres de ejemplo:**
+
+  * **Endpoint de Integración (EC2):** `http://<tu-ec2-ip>:8080/api/reports/create`
+  * **Parámetro de URL:** `reportType`
+
+**Pasos:**
+
+1.  En la configuración de tu `ExcelGeneratorAPI`, haz clic en **Routes** y selecciona la ruta **`$connect`**.
+
+2.  Haz clic en **Attach integration**.
+
+3.  Configura la integración de la siguiente manera:
+
+      * **Integration Type:** `HTTP`
+      * **HTTP Method:** `POST`
+      * **Integration Target:** `http://<tu-ec2-ip>:8080/api/reports/create`
+      * **Use Proxy Integration:** Desmárcalo (para poder usar plantillas de mapeo).
+      * **Credentials:** Selecciona el rol de IAM que creaste (`APIGatewayInvokeHTTPRole`).
+      * **Save**.
+
+4.  **Configurar la Request Template:**
+
+      * Después de guardar la integración, haz clic en **Integration Request**.
+
+      * En la sección **Body Mapping Templates**, haz clic en **Add mapping template**.
+
+      * En **Content-Type**, escribe `application/json`.
+
+      * En el editor de la plantilla, pega el siguiente VTL:
+
+        ```json
+        {
+          "connectionId": "$context.connectionId",
+          "type": "$input.params('reportType')"
+        }
+        ```
+
+      * Guarda los cambios.
+
+#### 4\. Configurar la Integration Response
+
+**Particularidad crítica:** Si el backend responde con un código de estado que no está mapeado, API Gateway fallará. Debemos configurar una respuesta para el código `201 Created`.
+
+**Pasos:**
+
+1.  En la configuración de la ruta `$connect`, haz clic en **Integration Response**.
+2.  Haz clic en **Create response**.
+3.  En **HTTP status regex**, introduce `201`.
+4.  Guarda la respuesta. No es necesario añadir un "Body Mapping Template" aquí, ya que el cliente no recibirá esta respuesta.
+
+#### 5\. Desplegar la API Gateway
+
+**Pasos:**
+
+1.  En el menú de la izquierda, haz clic en **Stages**.
+2.  Selecciona el stage `prod`.
+3.  Si es la primera vez que despliegas, haz clic en **Deploy API**. Si ya tienes un despliegue, haz clic en "Deploy" de nuevo.
+
+Una vez desplegada, el endpoint de tu API Gateway estará listo para recibir conexiones. El DevOps puede usar la URL del stage (`wss://<api-id>.execute-api.<region>.amazonaws.com/prod`) para probar la conexión con Postman o un cliente de WebSocket.
+
+### Resumen de particularidades para el DevOps
+
+  * **Rol de IAM:** Es obligatorio. Sin el rol, API Gateway no tiene permiso para invocar tu endpoint HTTP. El "Trust Relationship" es la parte más importante.
+  * **Plantillas de mapeo:** Es crucial que la plantilla de mapeo del **Request Body** esté configurada para `application/json` en la ruta `$connect`. El backend espera un cuerpo JSON.
+  * **Integration Response:** Debes configurar una respuesta para cada código de estado HTTP que el backend pueda devolver (ej. `201`, `400`). De lo contrario, API Gateway fallará.
+  * **URL del WebSocket:** El cliente debe pasar el parámetro de consulta (ej. `?reportType=ventas`) en la URL de conexión.
+  * **Pruebas:** Un `ping` a la instancia de EC2 solo indica que la instancia está viva. La prueba del `connectionId` debe hacerse con un cliente de WebSocket que se conecte a la API Gateway.
