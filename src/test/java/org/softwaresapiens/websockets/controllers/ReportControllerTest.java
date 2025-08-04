@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.softwaresapiens.websockets.domain.*;
 import org.softwaresapiens.websockets.services.ReportService;
+import org.softwaresapiens.websockets.services.WebSocketNotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -27,6 +28,9 @@ public class ReportControllerTest {
     private ReportController controllerUnderTest;
     @Mock
     private ReportService mockReportService;
+
+    @Mock
+    private WebSocketNotificationService mockWebSocketNotificationService;
 
     @Test
     void testCreateReport(){
@@ -55,7 +59,7 @@ public class ReportControllerTest {
 
             Report reportUpdated = new Report(reportId, "updatedReportType", updateReportRequest.getPath(), updateReportRequest.getStatus());
             when(mockReportService.update(reportId,updateReportRequest.getPath(), updateReportRequest.getStatus())).thenReturn(reportUpdated);
-
+            doNothing().when(mockWebSocketNotificationService).notifyClient(any(), anyMap());
             ResponseEntity<UpdateReportResponse> response = controllerUnderTest.updateReport(reportId, updateReportRequest);
             assertNotNull(response);
             assertEquals(HttpStatus.OK.value(), response.getStatusCodeValue());

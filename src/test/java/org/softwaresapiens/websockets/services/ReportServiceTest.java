@@ -23,6 +23,7 @@ class ReportServiceTest {
     @Mock
     private ReportRepository reportRepository;
 
+
     @InjectMocks
     private ReportService reportService;
 
